@@ -1,0 +1,6 @@
+# Test
+Much pain was experienced trying to set up unit tests with simavr. This idea has now been abandoned in favour of testing hardware agnostic code on the host PC (test_native). 
+
+A helpful post about tdd on platformio can be found here:
+https://community.platformio.org/t/please-help-me-understand-how-i-can-do-tdd-in-platformio/15734/5
+
