@@ -1,23 +1,28 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
-#include "avr8-stub.h"
+
+#ifdef DEBUG
+    #include "avr8-stub.h"
+#endif
 
 void blink(void)
 {
-    DDRB |= (1 << PB5); // Set pin 0 on port B as output
+    DDRB |= (1 << PB5);
     while (1)
     {
-        PORTB ^= (1 << PB5); // Toggle the pin
-        // _delay_ms(1);        // Delay for 500ms
+        PORTB ^= (1 << PB5);
     }
 }
 
 int main()
 {
-    debug_init();
-    sei();
-    // breakpoint();
+    #ifdef DEBUG
+        debug_init();
+        sei();
+    #endif
+
     blink();
+
     return 0;
 }
