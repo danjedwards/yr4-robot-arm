@@ -158,6 +158,26 @@ void usart_read_string(char* buffer, uint8_t max_length) {
     buffer[i] = '\0'; 
 }
 
+void pwm_8bit_init()
+{
+
+}
+
+void pwm_8bit_drive()
+{
+
+}
+
+void pwm_16bit_init()
+{
+
+}
+
+void pwm_16bit_drive()
+{
+    
+}
+
 void sys_init(void)
 {
     // Initialise system clocks
