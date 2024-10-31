@@ -8,9 +8,10 @@ Embedded software for controlling a customised Lynxmotion ALD5 robot arm.
 # To DO
 - ~~~Understand how to change fuse bytes,~~~
 - Implement USART code, => Works at a baud rate of 9600 but not at a baud rate of 15200 :( needs a clean up. 
+- Implement Interrupts,
+- Implement IO,
 - Implement PWM,
 - Implement ADC,
-- Implement Interrupts.
 - Implement Timers?
 - Implement WDT?
 - Implement RW to EEPROM,
