@@ -3,6 +3,8 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <string.h>
+#include <stdio.h>
 
 #ifdef DEBUG
 #include "avr8-stub.h"
@@ -264,6 +266,35 @@ void pwm_stop()
     DDRD &= (0 << DDD6) | (0 << DDD5) | (0 << DDD3);
 }
 
+void adc_init()
+{
+    // Set the ADC prescaler to 128 for an ADC clock of 125 kHz
+    ADCSRA |= (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+
+    // Set reference voltage to AVcc (5V on most boards)
+    ADMUX |= (1 << REFS0);
+
+    // Select ADC0 (PC0) as the ADC input channel
+    ADMUX &= 0xF0; // Clear previous channel selection
+    ADMUX |= 0;    // Select ADC0
+
+    // Enable the ADC
+    ADCSRA |= (1 << ADEN);
+}
+
+uint16_t adc_read()
+{
+    // Start the ADC conversion
+    ADCSRA |= (1 << ADSC);
+
+    // Wait for the conversion to complete (ADSC becomes '0' when complete)
+    while (ADCSRA & (1 << ADSC))
+        ;
+
+    // Read and return the ADC result
+    return ADC;
+}
+
 void sys_init(void)
 {
     // System Clocks
@@ -277,6 +308,9 @@ void sys_init(void)
 
     // 8 bit PWM
     pwm_init();
+
+    // ADC
+    adc_init();
 }
 
 int main()
@@ -292,12 +326,11 @@ int main()
 
     while (1)
     {
-        PORTD ^= (1 << PD4);
-        // pwm_start(100);
-        // _delay_ms(200);
-        // pwm_stop();
-        // _delay_ms(200);
-        _delay_ms(1000);
+        char message[20];
+        uint16_t val = adc_read();
+        sprintf(message, "adc_val: %d\n", val);
+        usart_tx(message, 20);
+        _delay_ms(100);
     }
 
     return 0;

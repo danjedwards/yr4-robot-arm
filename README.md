@@ -11,7 +11,7 @@ Embedded software for controlling a customised Lynxmotion ALD5 robot arm.
 - ~~Implement Interrupts => Half done~~, => done for PCINT23 with pull up. Tiggers on pin change.
 - ~~Implement IO => Half done~~ => Initialise IO in other initialise functions. For example, in PWM init.
 - ~~Implement PWM~~,
-- Implement ADC,
+- ~~Implement ADC~~ => working on ADC0,
 - ~~Implement Timers?~~ => all used for pwm.
 - Implement WDT?
 - Implement RW to EEPROM,
