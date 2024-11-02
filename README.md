@@ -6,13 +6,13 @@ Embedded software for controlling a customised Lynxmotion ALD5 robot arm.
 `test` - project unit tests.
 
 # To DO
-- ~~~Understand how to change fuse bytes,~~~
+- ~~Understand how to change fuse bytes,~~
 - Implement USART code, => Works at a baud rate of 9600 but not at a baud rate of 15200 :( needs a clean up. 
-- Implement Interrupts,
-- Implement IO,
-- Implement PWM,
+- Implement Interrupts => Half done,
+- ~~Implement IO => Half done~~ => Initialise IO in other initialise functions. For example, in PWM init.
+- ~~Implement PWM~~,
 - Implement ADC,
-- Implement Timers?
+- ~~Implement Timers?~~ => all used for pwm.
 - Implement WDT?
 - Implement RW to EEPROM,
 - Implement Initialise HW,

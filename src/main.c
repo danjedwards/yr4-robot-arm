@@ -46,6 +46,7 @@ void clk_init(void)
      ** 8.12.2 CLKPR – Clock Prescale Register (0x61)
      * By default, set to 0b0000 (i.e., scale of 1).
      */
+
     CLKPR = (1 << CLKPCE); // Clock Prescaler Enable Change. CLKPCE will be set to 0 four clock cycles after being set.
     CLKPR = 0;             // Clock Prescaler Select Bits.
 }
@@ -91,7 +92,7 @@ void usart_init(void)
 void usart_flush(void)
 {
 #ifdef DEBUG
-    return "serial disabled in debug mode";
+    return; // serial disabled in debug mode
 #endif
 
     unsigned char dummy;
@@ -102,7 +103,7 @@ void usart_flush(void)
 void usart_tx(char *msg, int msg_len)
 {
 #ifdef DEBUG
-    return;
+    return; // usart disabled in debug mode
 #endif
 
     for (int i = 0; i < msg_len; i++)
@@ -206,75 +207,51 @@ ISR(INT0_vect)
     // TO DO
 }
 
-void io_init()
-{
-    /**
-     ** 13.4.1 MCUCR – MCU Control Register
-     * Disable internal pull ups even if DDxn and PORTxn are configured to pull up.
-     *
-     ** 13.4.2 PORTB – The Port B Data Register
-     ** 13.4.3 DDRB – The Port B Data Direction Register
-     ** 13.4.4 PINB – The Port B Input Pins Address (Read Only)
-     ** 13.4.5 PORTC – The Port C Data Register
-     ** 13.4.6 DDRC – The Port C Data Direction Register
-     ** 13.4.7 PINC – The Port C Input Pins Address (Read Only)
-     ** 13.4.8 PORTD – The Port D Data Register
-     ** 13.4.9 DDRD – The Port D Data Direction Register
-     ** 13.4.10 PIND – The Port D Input Pins Address (Read Only)
-     */
-
-    // When complete, state why each pin is configured as an Input/Output
-    DDRB |= (1 << PB1);
-    DDRD |= (1 << PD3);
-}
-
-void pwm_8bit_init()
+void pwm_init()
 {
     /** 8 bit PWM Initialisation
-     *** PWM Capable Pins
-     * PB1, PB2, PB3, PD3, PD5, PD6.
+     * PWM Capable Pins: PB1, PB2, PB3, PD3, PD5, PD6.
+     * Fast PWM used for easier control of the duty cycle.
      *
-     *** Assumptions
-     * IO is configured correctly before this function.
-     *
-     *** Registers
-     * 14.9.1 TCCR0A – Timer/Counter Control Register A
-     * Comparison register behaviour configuration.
-     *
-     * 14.9.2 TCCR0B – Timer/Counter Control Register B
-     * Comparison register behaviour configuration and clock configuration.
-     *
-     * 14.9.3 TCNT0 – Timer/Counter Register
-     * Read/write. Contains timer value.
-     *
-     * 14.9.4 OCR0A – Output Compare Register A
-     * Output compare register A value.
-     *
-     * 14.9.5 OCR0B – Output Compare Register B
-     * Output compare register B value.
-     *
-     * 14.9.6 TIMSK0 – Timer/Counter Interrupt Mask Register
-     * Interrupt enable/disable for output compare match.
-     *
-     * 14.9.7 TIFR0 – Timer/Counter 0 Interrupt Flag Register
-     * Flags for match and overflow.
+     * f_pwm = f_cpu / (prescaler * 256)
+     * For f_pwm = 1kHz and f_cpu = 16e6, prescaler = 62.5 ~ 64
      */
 
-    TCCR0A |= (1 << COM0A0); // COM0A0 = 1, COM0A1 = 0 => Toggle OC0A on compare match
-    TCCR0A |= (1 << COM0B0); // COM0B0 = 1, COM0B1 = 0 => Toggle OC0B on compare match
-    // TCCR0A |= (1 << WGM00) // 00 => Update OCRx immediately
+    // Timer 0 - OC0A (PD6) & OC0B (PD5)
+    TCCR0A |= (1 << COM0A1) | (1 << COM0B1) | (1 << WGM01) | (1 << WGM00);
+    TCCR0B |= (0 << CS02) | (1 << CS01) | (1 << CS00);
+    // TIMSK0 |= (1 << OCIE0B) | (1 << OCIE0A) | (1 << TOIE0);
+
+    // Timer 1 - OC1A (PB1) & OC1B (PB2) - 8 bit used for simplicity but is capable of 10 bit pwm.
+    TCCR1A |= (1 << COM1A1) | (1 << COM1B1) | (1 << WGM10);
+    TCCR1B |= (0 << CS12) | (1 << CS11) | (1 << CS10) | (1 << WGM12);
+    // TIMSK1 |= (1 << OCIE1B) | (1 << OCIE1A) | (1 << TOIE1);
+
+    // Timer 2 - OC2A (PB3) & OC2B (PD3)
+    TCCR2A |= (1 << COM2A1) | (1 << COM2B1) | (1 << WGM21) | (1 << WGM20);
+    TCCR2B |= (1 << CS22) | (0 << CS21) | (0 << CS20);
+    // TIMSK2 |= (1 << OCIE0B) | (1 << OCIE0A) | (1 << TOIE0);
 }
 
-void pwm_8bit_drive()
+void pwm_start(short duty)
 {
+    // Turn on all pwm channels with the same duty cycle
+    OCR0A = duty;
+    OCR0B = duty;
+    OCR1A = duty;
+    OCR1B = duty;
+    OCR2A = duty;
+    OCR2B = duty;
+
+    DDRB |= (1 << DDB3) | (1 << DDB2) | (1 << DDB1);
+    DDRD |= (1 << DDD6) | (1 << DDD5) | (1 << DDD3);
 }
 
-void pwm_16bit_init()
+void pwm_stop()
 {
-}
-
-void pwm_16bit_drive()
-{
+    // Turn off all pwm channels
+    DDRB &= (0 << DDB3) | (0 << DDB2) | (0 << DDB1);
+    DDRD &= (0 << DDD6) | (0 << DDD5) | (0 << DDD3);
 }
 
 void sys_init(void)
@@ -288,13 +265,8 @@ void sys_init(void)
     // Interrupts
     interrupt_init();
 
-    // IO
-    io_init();
-
     // 8 bit PWM
-    pwm_16bit_init();
-
-    // 16 bit PWM
+    pwm_init();
 }
 
 int main()
@@ -304,12 +276,14 @@ int main()
 #endif
     sys_init();
 
-    usart_flush();
+    usart_tx("starting...", 20);
+
     while (1)
     {
-        char msg[10];
-        usart_read_string(msg, 10);
-        usart_tx(msg, 10);
+        pwm_start(100);
+        _delay_ms(200);
+        pwm_stop();
+        _delay_ms(200);
     }
 
     return 0;
