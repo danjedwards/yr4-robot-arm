@@ -14,7 +14,7 @@ Embedded software for controlling a customised Lynxmotion ALD5 robot arm.
 - ~~Implement ADC~~ => working on ADC0,
 - ~~Implement Timers?~~ => all used for pwm.
 - Implement WDT?
-- Implement RW to EEPROM,
+- Implement RW to EEPROM, => Can't test on Aruino because this requires changing the fuse bits (ISP required).
 - Implement Initialise HW,
 - Create high level design for the system,
 - Write unit tests,

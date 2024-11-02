@@ -5,6 +5,7 @@
 #include <util/delay.h>
 #include <string.h>
 #include <stdio.h>
+#include <avr/wdt.h>
 
 #ifdef DEBUG
 #include "avr8-stub.h"
@@ -295,10 +296,32 @@ uint16_t adc_read()
     return ADC;
 }
 
+void wdt_init()
+{
+    // Disable interrupts globally
+    cli();
+
+    // Reset WDT to avoid accidental reset during configuration
+    wdt_reset();
+
+    // Configure WDT for a 1-second timeout
+    // Step 1: Enable WDT change enable (WDE) and prescaler change enable (WDCE) bits
+    WDTCSR |= (1 << WDCE) | (1 << WDE);
+
+    // Step 2: Set the WDT prescaler to 1 second
+    WDTCSR = (1 << WDE) | (1 << WDP2) | (1 << WDP1); // 1-second timeout
+
+    // Re-enable interrupts globally
+    sei();
+}
+
 void sys_init(void)
 {
     // System Clocks
     clk_init();
+
+    // WDT
+    wdt_init();
 
     // UART
     usart_init();
@@ -320,17 +343,26 @@ int main()
 #endif
     sys_init();
 
-    usart_tx("starting...", 20);
+    usart_tx("starting...\n", 21);
 
-    DDRD |= (1 << DDD4);
+    DDRB |= (1 << PB5);
 
+    int count = 0;
     while (1)
     {
+        wdt_reset();
+        _delay_ms(500);
+        PORTB ^= (1 << PB5);
         char message[20];
-        uint16_t val = adc_read();
-        sprintf(message, "adc_val: %d\n", val);
+
+        sprintf(message, "count: %d\n", count);
         usart_tx(message, 20);
-        _delay_ms(100);
+
+        if (count == 10)
+        {
+            _delay_ms(750); // cause wdt to be triggered.
+        }
+        count++;
     }
 
     return 0;
