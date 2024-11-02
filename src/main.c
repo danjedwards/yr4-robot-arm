@@ -198,13 +198,23 @@ void interrupt_init()
      * Enables/disables interrupts on specific pins
      */
 
+    // Set PD7 as input with internal pull-up enabled
+    DDRD &= ~(1 << DDD7);   // Set PD7 as input
+    PORTD |= (1 << PORTD7); // Enable pull-up on PD7
+
+    // Enable Pin Change Interrupt on PCINT23 (PD7)
+    PCICR |= (1 << PCIE2);    // Enable Pin Change Interrupt 2 (PCINT[23:16])
+    PCMSK2 |= (1 << PCINT23); // Enable interrupt specifically for PCINT23
+
     // Enable global interrupts
     sei();
 }
 
-ISR(INT0_vect)
+// Interrupt Service Routine for Pin Change Interrupt 2
+ISR(PCINT2_vect)
 {
-    // TO DO
+    DDRB |= (1 << PB5);
+    PORTB ^= (1 << PB5);
 }
 
 void pwm_init()
@@ -278,12 +288,16 @@ int main()
 
     usart_tx("starting...", 20);
 
+    DDRD |= (1 << DDD4);
+
     while (1)
     {
-        pwm_start(100);
-        _delay_ms(200);
-        pwm_stop();
-        _delay_ms(200);
+        PORTD ^= (1 << PD4);
+        // pwm_start(100);
+        // _delay_ms(200);
+        // pwm_stop();
+        // _delay_ms(200);
+        _delay_ms(1000);
     }
 
     return 0;
