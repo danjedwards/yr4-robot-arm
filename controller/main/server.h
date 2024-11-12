@@ -1,5 +1,5 @@
-
 #ifndef SERVER
+#define SERVER
 
 #define AP_SSID "Robot Arm"
 #define AP_PASSWORD "\0" // No password

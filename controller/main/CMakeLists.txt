@@ -4,5 +4,5 @@ idf_component_register(
     SRCS ${SRC_FILES}
     INCLUDE_DIRS "."
     PRIV_REQUIRES spi_flash
-    REQUIRES "esp_wifi" "nvs_flash"
+    REQUIRES "esp_wifi" "nvs_flash" "driver"
 )
