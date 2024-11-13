@@ -1,5 +1,6 @@
 import socket
 import time
+import struct
 
 # ESP32 server configuration
 ESP32_IP = "192.168.4.1"
@@ -20,23 +21,27 @@ def send_and_receive(client_socket, message):
     """Send a message to the server and receive a response."""
     try:
         # Send the message
-        client_socket.sendall(message.encode())
+        client_socket.sendall(message)
         print(f"Sent: {message}")
 
         # Wait to receive the response
-        response = client_socket.recv(1024).decode()
+        response = client_socket.recv(1024)
         print(f"Received: {response}")
     except Exception as e:
         print(f"Communication error: {e}")
 
+def construct_msg(base_pos, shoulder_pos, elbow_pos, wrist1_pos, wrist2_pos, gripper_pos):
+    return b"a" + struct.pack(">6h", base_pos, shoulder_pos, elbow_pos, wrist1_pos, wrist2_pos, gripper_pos)
+
 def main():
     # Connect to the server
     client_socket = connect_to_server()
+
     if client_socket is None:
         return
 
     # Example: Sending multiple messages to the server
-    messages = ["Hello ESP32!", "How are you?", "This is a test message", "Goodbye!"]
+    messages = [construct_msg(200, 0, 0, 0, 0, 0), construct_msg(1000, 0, 0, 0, 0, 0)]
     for msg in messages:
         send_and_receive(client_socket, msg)
         time.sleep(1)  # Wait a bit between messages
@@ -47,3 +52,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    msg = construct_msg(1200, 0, 0, 0, 0, 0)

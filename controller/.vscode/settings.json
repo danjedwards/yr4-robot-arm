@@ -13,7 +13,7 @@
     "idf.port": "/dev/ttyUSB0",
     "idf.pythonBinPath": "/home/dan/.espressif/python_env/idf5.5_py3.10_env/bin/python",
     "idf.toolsPath": "/home/dan/.espressif",
-    "idf.flashType": "JTAG",
+    "idf.flashType": "UART",
     "files.associations": {
         "unity.h": "c",
         "task.h": "c",

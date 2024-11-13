@@ -28,23 +28,12 @@ void motor_init(uint8_t channel, uint8_t gpio)
     ESP_ERROR_CHECK(ledc_channel_config(&motor_channel));
 }
 
-void motor_to_angle(uint8_t motor_channel, int angle)
+void motor_to_pos(uint8_t motor_channel, int duty)
 {
-    int duty = motor_angle_to_duty(angle);
-    if (duty < MOTOR_DUTY_MIN)
+    if (duty < MOTOR_DUTY_MIN || duty > MOTOR_DUTY_MAX)
     {
         return;
     }
     ledc_set_duty(MOTOR_MODE, motor_channel, duty);
     ledc_update_duty(MOTOR_MODE, motor_channel);
-}
-
-int motor_angle_to_duty(int angle)
-{
-    if (angle > MOTOR_ANGLE_MAX || angle < MOTOR_ANGLE_MIN)
-    {
-        return -1;
-    }
-    float fraction = (float)(angle - MOTOR_ANGLE_MIN) / (float)(MOTOR_ANGLE_MAX - MOTOR_ANGLE_MIN);
-    return MOTOR_DUTY_MIN + fraction * (MOTOR_DUTY_MAX - MOTOR_DUTY_MIN);
 }
