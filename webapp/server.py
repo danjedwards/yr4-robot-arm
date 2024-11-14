@@ -26,7 +26,7 @@ async def handle_websocket(websocket, path):
             print(f"Received from robot: {response}")
 
             # Forward the robot's response back to the WebSocket client
-            await websocket.send("response")
+            await websocket.send(response)
     except websockets.ConnectionClosed:
         print("WebSocket client disconnected")
     finally:

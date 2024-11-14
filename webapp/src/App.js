@@ -1,15 +1,16 @@
-// App.js
 import React, { useState, useEffect } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
-import { Box, Slider, Typography, Container, Button } from '@mui/material';
-import theme from './theme';
+import { Container, Tabs, Tab, Box } from '@mui/material';
+import ProgrammingView from './components/ProgrammingView';
+import RunMode from './components/RunMode';
 
 const App = () => {
-  const [motorPositions, setMotorPositions] = useState([0, 0, 0, 0, 0, 0]);
   const [ws, setWs] = useState(null);
+  const [currentTab, setCurrentTab] = useState(0);
+  const [motorPositions, setMotorPositions] = useState([1225, 1225, 1225, 1225, 1225, 1225]);
+  const [availablePrograms] = useState(["Program 1", "Program 2", "Program 3", "Program 4", "Program 5"])
 
   useEffect(() => {
-    const websocket = new WebSocket('ws://192.168.4.2.:8000');
+    const websocket = new WebSocket('ws://127.0.0.1:8000');
     setWs(websocket);
 
     websocket.onmessage = (event) => {
@@ -19,80 +20,71 @@ const App = () => {
     return () => websocket.close();
   }, []);
 
-  const sendCommand = (command) => {
+
+  const sendCommand = (rw, mode, cmd, bytes) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       console.log(`Web Socket not connected!`);
       return;
     }
 
-    const byteArray = new Uint8Array(13);
+    let byteArray = new Uint8Array(bytes.length+1);
+    
+    byteArray[0] = ((rw & 1) << 6) | ((mode & 0b111) << 3) | (cmd & 0b111);
 
-    byteArray[0] = 127;
-
-    for (let i = 0; i < 6; i++)
-    {
-      byteArray[2 + 2*i] = motorPositions[i] & 0xff;
-      byteArray[1 + 2*i] = (motorPositions[i] >> 8) & 0xff;
-    }
+    byteArray.set(bytes, 1);
 
     ws.send(byteArray);
     console.log("ws message:", byteArray);
   };
 
-  // Function to handle slider changes
-  const handleSliderChange = (index) => (event, newValue) => {
+  const handleSliderChange = (index, newValue) => {
     const newPositions = [...motorPositions];
     newPositions[index] = newValue;
     setMotorPositions(newPositions);
+  };
+
+  const sendSignal = () => {
+    let byteArray = new Uint8Array(12);
+
+    for (let i = 0; i < 6; i++)
+    {
+      byteArray[2*i] = motorPositions[i] & 0xff;
+      byteArray[2*i+1] = (motorPositions[i] >> 8) & 0xff;
+    }
     
+    sendCommand(1, 0, 2, byteArray);
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue);
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container
-        maxWidth="md"
-        sx={{
-          textAlign: 'center',
-          color: 'text.primary',
-          padding: 4,
-          backgroundColor: 'background.default',
-        }}
+    <Container maxWidth="md" sx={{ padding: 4, textAlign: 'center' }}>
+      <Tabs
+        value={currentTab}
+        onChange={handleTabChange}
+        centered
+        indicatorColor="primary"
+        textColor="primary"
+        aria-label="Robot Control Tabs"
       >
-        <Typography variant="h4" color="primary" gutterBottom>
-          Robot Arm Control Panel
-        </Typography>
-
-        <Box display="flex" justifyContent="center" gap={3} marginBottom={4}>
-          {motorPositions.map((position, index) => (
-            <Box key={index} display="flex" flexDirection="column" alignItems="center">
-              <Typography variant="h6" color="primary">
-                Motor {index + 1}
-              </Typography>
-              <Slider
-                orientation="vertical"
-                value={position}
-                onChange={handleSliderChange(index)}
-                min={410}
-                max={2048}
-                sx={{ height: 200, color: 'primary.main' }}
-              />
-              <Typography variant="body2" color="text.primary">
-                {position}
-              </Typography>
-            </Box>  
-          ))}
-        </Box>
-
-        <Button
-            variant="contained"           // Styling the button
-            color="primary"               // Choose color scheme
-            onClick={sendCommand}         // Define onClick event
-            sx={{ padding: '10px 20px' }} // Optional: MUI styling
-            >
-            Set Positions
-          </Button>
-      </Container>
-    </ThemeProvider>
+        <Tab label="Prog Mode" />
+        <Tab label="Run Mode" />
+      </Tabs>
+      <Box sx={{ marginTop: 4 }}>
+        {currentTab === 0 && 
+          <ProgrammingView 
+            motorPositions={motorPositions}
+            handleSliderChange={handleSliderChange}
+            sendSignal={sendSignal}
+        />}
+        {currentTab === 1 && 
+        <RunMode 
+        availablePrograms={availablePrograms}
+        />}
+      </Box>
+    </Container>
   );
 };
 
