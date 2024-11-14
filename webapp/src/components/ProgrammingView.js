@@ -4,7 +4,7 @@ import motorNames from '../globals';
 import { Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import SpinBox from './SpinBox';
 
-const ProgrammingView = ({ motorPositions, handleSliderChange, sendSignal}) => {
+const ProgrammingView = ({ motorPositions, handleSliderChange, sendWaypoint}) => {
   const [waypointStep, setWaypointStep] = useState(1);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [programIndex, setProgramIndex] = useState(0);
@@ -55,7 +55,7 @@ const ProgrammingView = ({ motorPositions, handleSliderChange, sendSignal}) => {
         <Button
           variant="contained"
           color="primary"
-          onClick={sendSignal}
+          onClick={sendWaypoint}
           sx={{
             paddingX: 3, 
             paddingY: 2, 
