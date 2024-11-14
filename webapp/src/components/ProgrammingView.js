@@ -51,15 +51,34 @@ const ProgrammingView = ({ motorPositions, handleSliderChange, sendSignal}) => {
         ))}
       </Box>
 
-      <Box>
-        <Button variant="contained" color="primary" onClick={sendSignal} margin={20}>
+      <Box display="flex" justifyContent="center" alignItems="center" sx={{ marginY: 3, gap: 2 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={sendSignal}
+          sx={{
+            paddingX: 3, 
+            paddingY: 2, 
+            fontSize: '1.2rem',
+          }}
+        >
           Set Waypoint
         </Button>
 
-        <Button variant="contained" color="primary" onClick={handleSaveWaypoint}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSaveWaypoint}
+          sx={{
+            paddingX: 3,
+            paddingY: 2,
+            fontSize: '1.2rem',
+          }}
+        >
           Save Program
         </Button>
       </Box>
+
 
       <Dialog open={isDialogOpen} onClose={handleDialogClose}>
         <DialogTitle>Save Program</DialogTitle>
