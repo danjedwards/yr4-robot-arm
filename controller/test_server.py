@@ -26,12 +26,18 @@ def send_and_receive(client_socket, message):
 
         # Wait to receive the response
         response = client_socket.recv(1024)
+        parse_msg(response)
         print(f"Received: {response}")
     except Exception as e:
         print(f"Communication error: {e}")
 
-def construct_msg(base_pos, shoulder_pos, elbow_pos, wrist1_pos, wrist2_pos, gripper_pos):
-    return b"a" + struct.pack(">6h", base_pos, shoulder_pos, elbow_pos, wrist1_pos, wrist2_pos, gripper_pos)
+def construct_msg(rw, mode, cmd, byte_data):
+    cfg_byte = ((rw & 1) << 6) | ((mode & 0b111) << 3) | (cmd & 0b111)
+    return cfg_byte.to_bytes(1, 'big') + byte_data 
+
+def parse_msg(buf):
+    err = (buf[0] >> 7)
+    print(err)
 
 def main():
     # Connect to the server
@@ -39,10 +45,10 @@ def main():
 
     if client_socket is None:
         return
-
-    # Example: Sending multiple messages to the server
-    messages = [construct_msg(200, 0, 0, 0, 0, 0), construct_msg(1000, 0, 0, 0, 0, 0)]
+    
+    messages = [construct_msg(1, 0, 0, b"0"), construct_msg(0, 0, 0, b"0")]
     for msg in messages:
+        pass
         send_and_receive(client_socket, msg)
         time.sleep(1)  # Wait a bit between messages
 

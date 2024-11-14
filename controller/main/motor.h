@@ -1,7 +1,7 @@
 #ifndef MOTOR
 #define MOTOR
 
-#include "driver/ledc.h"
+#include <stdio.h>
 
 #define MOTOR_TIMER LEDC_TIMER_0
 #define MOTOR_MODE LEDC_LOW_SPEED_MODE   // The only option for esp32s3 is low speed mode
@@ -10,13 +10,6 @@
 #define MOTOR_FREQUENCY (50)             // Frequency in Hertz
 #define MOTOR_DUTY_MIN 410               // 16384 * (MOTOR_DUTY_MIN_US / 20000)
 #define MOTOR_DUTY_MAX 2048              // 16384 * (MOTOR_DUTY_MAX_US / 20000)
-
-#define MOTOR_BASE_CHANNEL LEDC_CHANNEL_0
-#define MOTOR_SHOULDER_CHANNEL LEDC_CHANNEL_1
-#define MOTOR_ELBOW_CHANNEL LEDC_CHANNEL_2
-#define MOTOR_WRIST_1_CHANNEL LEDC_CHANNEL_3
-#define MOTOR_WRIST_2_CHANNEL LEDC_CHANNEL_4
-#define MOTOR_GRIPPER_CHANNEL LEDC_CHANNEL_5
 
 void motor_init(uint8_t channel, uint8_t gpio);
 void motor_to_pos(uint8_t motor_channel, int duty);

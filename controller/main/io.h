@@ -1,0 +1,21 @@
+#ifndef IO
+#define IO
+
+#include "driver/ledc.h"
+
+// Motors / PWM
+#define BASE_GPIO 5
+#define SHOULDER_GPIO 4
+#define ELBOW_GPIO 0
+#define WRIST_1_GPIO 0
+#define WRIST_2_GPIO 0
+#define GRIPPER_GPIO 0
+
+#define BASE_PWM_CHANNEL LEDC_CHANNEL_0
+#define SHOULDER_PWM_CHANNEL LEDC_CHANNEL_1
+#define ELBOW_PWM_CHANNEL LEDC_CHANNEL_2
+#define WRIST_1_PWM_CHANNEL LEDC_CHANNEL_3
+#define WRIST_2_PWM_CHANNEL LEDC_CHANNEL_4
+#define GRIPPER_PWM_CHANNEL LEDC_CHANNEL_5
+
+#endif // IO

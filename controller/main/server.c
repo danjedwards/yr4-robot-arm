@@ -13,19 +13,37 @@
 static const char *TAG = "wifi_ap";
 static message_callback_t message_callback = NULL; // Callback for received messages
 
-// Register a message callback
 void register_message_callback(message_callback_t callback)
 {
     message_callback = callback;
 }
 
-// Default data received callback
-void on_message_received(const char *data, int len)
+void on_message_received(const message msg, message *response)
 {
-    ESP_LOGI(TAG, "Callback received message: %.*s", len, data);
+    ESP_LOGI(TAG, "Callback received message");
 }
 
-// Wi-Fi Event Handler (unchanged)
+void buffer_to_message(message *msg, const char *buf, int len)
+{
+    if (len < 2)
+    {
+        return;
+    }
+
+    msg->rw = (buf[0] >> 6) & 1;
+    msg->mode = (buf[0] >> 3) & 7;
+    msg->command = buf[0] & 7;
+    msg->data_len = len - 1;
+    memcpy(msg->data, buf, msg->data_len);
+}
+
+void message_to_buffer(message msg, char *buf)
+{
+    buf[0] = (msg.err << 7) | ((msg.rw & 1) << 6) | ((msg.mode & 7) << 3) | (msg.command & 7);
+    memcpy(buf + 1, msg.data, msg.data_len);
+    printf("Buffer message: %s\n", buf + 1);
+}
+
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED)
@@ -40,38 +58,37 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
 }
 
-// Task to handle individual client connections
 void handle_client_task(void *pvParameters)
 {
     int client_socket = (int)pvParameters;
     char buffer[BUFFER_SIZE];
     int len;
 
-    // Receive data from the client
     while ((len = recv(client_socket, buffer, sizeof(buffer) - 1, 0)) > 0)
     {
-        buffer[len] = '\0'; // Null-terminate received data
+        buffer[len] = '\0';
 
-        // Log received message
         ESP_LOGI(TAG, "Received message: %s", buffer);
 
-        // Call the message callback if registered
+        message request, response = {0};
+        response.err = MSG_ERROR;
+        buffer_to_message(&request, buffer, len);
+
         if (message_callback)
         {
-            message_callback(buffer, len);
+            message_callback(request, &response);
         }
 
-        // Echo the received message back to the client
-        send(client_socket, buffer, len, 0);
+        message_to_buffer(response, buffer);
+
+        send(client_socket, buffer, response.data_len + 1, 0);
     }
 
-    // Close the client socket
     ESP_LOGI(TAG, "Client disconnected");
     close(client_socket);
     vTaskDelete(NULL);
 }
 
-// Task for TCP server to accept incoming connections
 void tcp_server_task(void *pvParameters)
 {
     int listen_socket, client_socket;
@@ -133,7 +150,6 @@ void tcp_server_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-// Initialize Wi-Fi and TCP server
 void server_init()
 {
     // Initialize NVS
