@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 static const char *NAMESPACE = "robot_data";
+uint8_t current_waypoint = 0;
 waypoint current_program[MAX_WAYPOINTS] = {0};
 
 void init_nvs()

@@ -31,17 +31,16 @@ void buffer_to_message(message *msg, const char *buf, int len)
     }
 
     msg->rw = (buf[0] >> 6) & 1;
-    msg->mode = (buf[0] >> 3) & 7;
+    msg->state = (buf[0] >> 3) & 7;
     msg->command = buf[0] & 7;
     msg->data_len = len - 1;
-    memcpy(msg->data, buf, msg->data_len);
+    memcpy(msg->data, buf + 1, msg->data_len);
 }
 
 void message_to_buffer(message msg, char *buf)
 {
-    buf[0] = (msg.err << 7) | ((msg.rw & 1) << 6) | ((msg.mode & 7) << 3) | (msg.command & 7);
+    buf[0] = (msg.err << 7) | ((msg.rw & 1) << 6) | ((msg.state & 7) << 3) | (msg.command & 7);
     memcpy(buf + 1, msg.data, msg.data_len);
-    printf("Buffer message: %s\n", buf + 1);
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -71,7 +70,6 @@ void handle_client_task(void *pvParameters)
         ESP_LOGI(TAG, "Received message: %s", buffer);
 
         message request, response = {0};
-        response.err = MSG_ERROR;
         buffer_to_message(&request, buffer, len);
 
         if (message_callback)

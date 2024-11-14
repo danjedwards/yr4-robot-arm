@@ -2,6 +2,23 @@ import socket
 import time
 import struct
 
+MSG_ERROR = 0
+MSG_OKAY = 1
+
+MSG_READ = 0
+MSG_WRITE = 1
+
+MSG_IDLE =  0
+MSG_PROGRAM =  1
+RUNNING =  2
+
+MSG_WAYPOINT_COUNT =  0
+MSG_WAYPOINT_IDX =  1
+MSG_WAYPOINT_CUR =  2
+MSG_PROGRAM_COUNT =  3
+MSG_PROGRAM_NAME =  4
+MSG_PROGRAM_RW =  5
+
 # ESP32 server configuration
 ESP32_IP = "192.168.4.1"
 SERVER_PORT = 8080
@@ -36,8 +53,16 @@ def construct_msg(rw, mode, cmd, byte_data):
     return cfg_byte.to_bytes(1, 'big') + byte_data 
 
 def parse_msg(buf):
-    err = (buf[0] >> 7)
-    print(err)
+    err = not ((buf[0] >> 7) & 1)
+    rw = (buf[0] >> 6)  & 1
+    state = (buf[0] >> 3) & 0b111
+    command = buf[0] & 0b111
+    data = buf[1:]
+    print("Error") if err else print("Success")
+    print("Write") if rw else print("Read")
+    print(f"State: {state}")
+    print(f"command: {command}")
+    print(f"data: {data}")
 
 def main():
     # Connect to the server
@@ -46,11 +71,15 @@ def main():
     if client_socket is None:
         return
     
-    messages = [construct_msg(1, 0, 0, b"0"), construct_msg(0, 0, 0, b"0")]
+    messages = [
+        construct_msg(MSG_WRITE, 0, MSG_WAYPOINT_COUNT, b"0"), 
+        construct_msg(MSG_READ, 0, MSG_PROGRAM_COUNT, b"0")
+    ]
     for msg in messages:
-        pass
         send_and_receive(client_socket, msg)
         time.sleep(1)  # Wait a bit between messages
+
+    pass
 
     # Close the connection
     client_socket.close()

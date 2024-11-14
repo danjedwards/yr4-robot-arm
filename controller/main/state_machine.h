@@ -4,10 +4,6 @@
 #include <stdio.h>
 #include "server.h"
 
-#define IDLE 0
-#define PROGRAM 1
-#define RUN 2
-
 typedef void (*state_function_t)();
 
 typedef struct
