@@ -19,7 +19,7 @@
 // States
 #define MSG_IDLE 0
 #define MSG_PROGRAM 1
-#define RUNNING 2
+#define MSG_RUNNING 2
 // Commands
 #define MSG_WAYPOINT_COUNT 0
 #define MSG_WAYPOINT_IDX 1
@@ -27,6 +27,7 @@
 #define MSG_PROGRAM_COUNT 3
 #define MSG_PROGRAM_NAME 4
 #define MSG_PROGRAM_RW 5
+#define MSG_RUN 6
 
 typedef struct
 {

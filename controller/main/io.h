@@ -5,7 +5,7 @@
 
 // Motors / PWM
 #define BASE_GPIO 5
-#define SHOULDER_GPIO 4
+#define SHOULDER_GPIO 7
 #define ELBOW_GPIO 0
 #define WRIST_1_GPIO 0
 #define WRIST_2_GPIO 0

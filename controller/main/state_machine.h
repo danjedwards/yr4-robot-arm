@@ -22,6 +22,9 @@ void idle_proc();
 void prog_init();
 void prog_proc();
 
+void run_init();
+void run_proc();
+
 extern state idle;
 extern state program;
 extern volatile state *current_state;

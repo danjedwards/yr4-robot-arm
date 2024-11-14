@@ -14,6 +14,7 @@
 
 state idle = {MSG_IDLE, "idle", idle_init, idle_proc};
 state program = {MSG_PROGRAM, "program", prog_init, prog_proc};
+state run = {MSG_RUNNING, "run", run_init, run_proc};
 
 volatile state *current_state = &idle;
 volatile state *next_state = NULL;
@@ -95,9 +96,16 @@ void process_message_callback(const message request, message *response)
         response->data_len = strlen(msg);
         memcpy(response->data, msg, response->data_len);
         break;
+    case MSG_RUN:
+        if (response->rw == MSG_WRITE)
+        {
+            next_state = request.data[0] ? &run : &idle;
+        }
     default:
         return;
     }
+
+    // response->state = next_state->id;
 
     response->err = MSG_OKAY;
 }
@@ -113,8 +121,10 @@ void idle_init()
 
 void idle_proc()
 {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    printf("idle...\n");
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+    motor_to_pos(BASE_PWM_CHANNEL, current_program[current_waypoint].base_pos);
+    motor_to_pos(SHOULDER_PWM_CHANNEL, current_program[current_waypoint].shoulder_pos);
+    printf("%d, %d\n", current_program[current_waypoint].base_pos, current_program[current_waypoint].shoulder_pos);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -128,4 +138,19 @@ void prog_init()
 
 void prog_proc()
 {
+}
+
+///////////////////////////////////////////////////////////////////////
+// Run
+///////////////////////////////////////////////////////////////////////
+
+void run_init()
+{
+    register_message_callback(process_message_callback);
+}
+
+void run_proc()
+{
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    printf("Running...\n");
 }
