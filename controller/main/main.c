@@ -1,24 +1,29 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "state_machine.h"
-#include "nvs.h"
 
 void app_main(void)
 {
-    controller_init();
-
-    current_state->init();
+    state_machine_init();
 
     while (1)
     {
-        if (next_state != NULL)
+        if (xSemaphoreTake(sm_mutex, portMAX_DELAY) != pdTRUE)
         {
-            current_state = next_state;
-            next_state = NULL;
-            current_state->init();
+            printf("State machine mutex error in main!\n");
         }
 
-        current_state->process();
+        if (sm.next_state != NULL)
+        {
+            sm.current_state = sm.next_state;
+            sm.next_state = NULL;
+            sm.current_state->init();
+        }
+
+        sm.current_state->process();
+        xSemaphoreGive(sm_mutex);
+        vTaskDelay(5 / portTICK_PERIOD_MS);
     }
 }

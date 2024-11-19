@@ -1,14 +1,15 @@
-#include "server.h"
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "server.h"
 #include "esp_wifi.h"
+#include "esp_mac.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 static const char *TAG = "wifi_ap";
 static message_callback_t message_callback = NULL; // Callback for received messages
@@ -25,16 +26,15 @@ void on_message_received(const message msg, message *response)
 
 void buffer_to_message(message *msg, const char *buf, int len)
 {
-    if (len < 2)
-    {
-        return;
-    }
-
     msg->rw = (buf[0] >> 6) & 1;
     msg->state = (buf[0] >> 3) & 7;
     msg->command = buf[0] & 7;
     msg->data_len = len - 1;
-    memcpy(msg->data, buf + 1, msg->data_len);
+
+    if (msg->data_len > 0)
+    {
+        memcpy(msg->data, buf + 1, msg->data_len);
+    }
 }
 
 void message_to_buffer(message msg, char *buf)
@@ -48,12 +48,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED)
     {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
-        // ESP_LOGI(TAG, "Device connected, MAC: " MACSTR, MAC2STR(event->mac));
+        ESP_LOGI(TAG, "Device connected, MAC: " MACSTR, MAC2STR(event->mac));
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED)
     {
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
-        // ESP_LOGI(TAG, "Device disconnected, MAC: " MACSTR, MAC2STR(event->mac));
+        ESP_LOGI(TAG, "Device disconnected, MAC: " MACSTR, MAC2STR(event->mac));
     }
 }
 
@@ -150,15 +150,6 @@ void tcp_server_task(void *pvParameters)
 
 void server_init()
 {
-    // Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
     // Initialize TCP/IP and Wi-Fi
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());

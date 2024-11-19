@@ -12,32 +12,45 @@
 // States
 ///////////////////////////////////////////////////////////////////////
 
+void idle_init();
+void idle_proc();
+void prog_init();
+void prog_proc();
+void run_init();
+void run_proc();
+
 state idle = {MSG_IDLE, "idle", idle_init, idle_proc};
 state program = {MSG_PROGRAM, "program", prog_init, prog_proc};
 state run = {MSG_RUNNING, "run", run_init, run_proc};
 
-volatile state *current_state = &idle;
-volatile state *next_state = NULL;
+state_machine sm = {0};
+SemaphoreHandle_t sm_mutex = {0};
 
 ///////////////////////////////////////////////////////////////////////
 // Common
 ///////////////////////////////////////////////////////////////////////
 
-void controller_init()
+void state_machine_init()
 {
+
+    sm_mutex = xSemaphoreCreateMutex();
+    if (sm_mutex == NULL)
+    {
+        printf("Failed to create mutex\n");
+        return;
+    }
+
+    sm.current_state = &idle;
+    sm.next_state = NULL;
+    sm.current_waypoint_index = 0;
+    memset(sm.current_program, 0, sizeof(sm.current_program));
+
     init_nvs();
     server_init();
 
-    // Motors
-    motor_init(BASE_PWM_CHANNEL, BASE_GPIO);
-    motor_init(SHOULDER_PWM_CHANNEL, SHOULDER_GPIO);
-    motor_init(ELBOW_PWM_CHANNEL, ELBOW_GPIO);
-    motor_init(WRIST_1_PWM_CHANNEL, WRIST_1_GPIO);
-    motor_init(WRIST_2_PWM_CHANNEL, WRIST_2_GPIO);
-    motor_init(GRIPPER_PWM_CHANNEL, GRIPPER_GPIO);
+    sm.current_state->init();
 }
 
-// This is NOT thread safe!!!!!!!!!!!!!!!!!!
 void process_message_callback(const message request, message *response)
 {
     response->rw = request.rw;
@@ -45,7 +58,11 @@ void process_message_callback(const message request, message *response)
     response->command = request.command;
     response->data_len = 0;
 
-    // Could do with better error checking.
+    if (xSemaphoreTake(sm_mutex, portMAX_DELAY) != pdTRUE)
+    {
+        printf("State machine mutex error!\n");
+        return;
+    }
 
     switch (response->command)
     {
@@ -54,60 +71,110 @@ void process_message_callback(const message request, message *response)
         response->data[0] = MAX_WAYPOINTS;
         break;
     case MSG_WAYPOINT_IDX:
-        if (response->rw == MSG_WRITE && request.data[0] > 0 && request.data[0] < MAX_WAYPOINTS)
+        if (response->rw == MSG_WRITE)
         {
-            current_waypoint = request.data[0];
+            if (request.data_len == 0)
+                goto end;
+            if (request.data[0] > MAX_WAYPOINTS - 1)
+                goto end;
+            sm.current_waypoint_index = request.data[0];
         }
         response->data_len = 1;
-        response->data[0] = current_waypoint;
+        response->data[0] = sm.current_waypoint_index;
         break;
     case MSG_WAYPOINT_CUR:
         if (response->rw == MSG_WRITE)
         {
-            memcpy(&current_program[current_waypoint], request.data, request.data_len);
+            if (request.data_len != 12)
+                goto end;
+            for (int i = 0; i < request.data_len / 2; i++)
+            {
+                uint16_t data = (request.data[2 * i + 1] << 8) | request.data[2 * i];
+                if (data < MOTOR_DUTY_MIN || data > MOTOR_DUTY_MAX)
+                {
+                    goto end;
+                }
+            }
+            memcpy(&sm.current_program[sm.current_waypoint_index], request.data, request.data_len);
         }
         response->data_len = sizeof(waypoint);
-        memcpy(response->data, &current_program[current_waypoint], response->data_len);
+        memcpy(response->data, &sm.current_program[sm.current_waypoint_index], response->data_len);
+        // debug
+        printf("base pos %d\n", sm.current_program[sm.current_waypoint_index].base_pos);
+        printf("shoulder pos %d\n", sm.current_program[sm.current_waypoint_index].shoulder_pos);
+        printf("elbow pos %d\n", sm.current_program[sm.current_waypoint_index].elbow_pos);
+        printf("wrist1 pos %d\n", sm.current_program[sm.current_waypoint_index].wrist1_pos);
+        printf("wrist2 pos %d\n", sm.current_program[sm.current_waypoint_index].wrist2_pos);
+        printf("gripper pos %d\n", sm.current_program[sm.current_waypoint_index].gripper_pos);
         break;
     case MSG_PROGRAM_COUNT:
         response->data_len = 1;
         response->data[0] = MAX_PROGRAMS;
         break;
     case MSG_PROGRAM_NAME:
+        if (request.data_len == 0)
+            goto end;
         if (response->rw == MSG_WRITE)
         {
-            set_program_name(request.data[0], request.data + 1);
+            if (request.data_len < 2)
+                goto end;
+            if (request.data[0] > MAX_PROGRAMS)
+                goto end;
+            char new_name[MAX_NAME_LEN];
+            memcpy(new_name, request.data + 1, request.data_len - 1);
+            new_name[request.data_len - 1] = '\0';
+            set_program_name(request.data[0], new_name);
         }
         char *name = get_program_name(request.data[0]);
+        if (name == NULL)
+            goto end;
         response->data_len = strlen(name);
         memcpy(response->data, name, response->data_len);
         break;
     case MSG_PROGRAM_RW:
+        if (request.data_len == 0)
+            goto end;
+        if (request.data[0] > MAX_PROGRAMS - 1)
+            goto end;
         if (response->rw == MSG_WRITE)
         {
-            save_program(request.data[0]);
+            save_program(request.data[0], sm.current_program);
         }
         else
         {
-            load_program(request.data[0]);
+            load_program(request.data[0], sm.current_program);
         }
         char msg[30];
-        snprintf(msg, 30, "Loaded program: %x", request.data[0]);
+        snprintf(msg, 30, "Program %x Loaded", request.data[0]);
         response->data_len = strlen(msg);
         memcpy(response->data, msg, response->data_len);
         break;
     case MSG_RUN:
         if (response->rw == MSG_WRITE)
         {
-            next_state = request.data[0] ? &run : &idle;
+            if (request.data_len == 0)
+                goto end;
+            sm.next_state = request.data[0] ? &run : &idle;
         }
+        break;
     default:
-        return;
+        printf("Unkown Command!\n");
+        goto end;
     }
 
-    // response->state = next_state->id;
+    if (sm.next_state != NULL)
+    {
+        response->state = sm.next_state->id;
+    }
+    else
+    {
+        response->state = sm.current_state->id;
+    }
 
     response->err = MSG_OKAY;
+end:
+    xSemaphoreGive(sm_mutex);
+    return;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -122,9 +189,7 @@ void idle_init()
 void idle_proc()
 {
     vTaskDelay(10 / portTICK_PERIOD_MS);
-    motor_to_pos(BASE_PWM_CHANNEL, current_program[current_waypoint].base_pos);
-    motor_to_pos(SHOULDER_PWM_CHANNEL, current_program[current_waypoint].shoulder_pos);
-    printf("%d, %d\n", current_program[current_waypoint].base_pos, current_program[current_waypoint].shoulder_pos);
+    printf("Idle Proc...\n");
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -151,6 +216,6 @@ void run_init()
 
 void run_proc()
 {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     printf("Running...\n");
 }

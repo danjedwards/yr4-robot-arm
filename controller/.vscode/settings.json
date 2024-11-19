@@ -19,6 +19,7 @@
         "task.h": "c",
         "ledc.h": "c",
         "state_machine.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "nvs.h": "c"
     }
 }

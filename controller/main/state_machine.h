@@ -1,8 +1,10 @@
 #ifndef STATE_MACHINE
 #define STATE_MACHINE
 
+#include "freertos/semphr.h"
 #include <stdio.h>
 #include "server.h"
+#include "nvs.h"
 
 typedef void (*state_function_t)();
 
@@ -14,20 +16,17 @@ typedef struct
     state_function_t process;
 } state;
 
-void controller_init();
+typedef struct
+{
+    state *current_state;
+    state *next_state;
+    uint8_t current_waypoint_index;
+    waypoint current_program[MAX_WAYPOINTS];
+} state_machine;
 
-void idle_init();
-void idle_proc();
+void state_machine_init();
 
-void prog_init();
-void prog_proc();
-
-void run_init();
-void run_proc();
-
-extern state idle;
-extern state program;
-extern volatile state *current_state;
-extern volatile state *next_state;
+extern state_machine sm;
+extern SemaphoreHandle_t sm_mutex;
 
 #endif // STATE_MACHINE

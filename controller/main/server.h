@@ -6,7 +6,7 @@
 // General Config
 #define AP_SSID "Robot Arm"
 #define AP_PASSWORD "\0"
-#define MAX_CLIENTS 2
+#define MAX_CLIENTS 1
 #define SERVER_PORT 8080
 #define BUFFER_SIZE 255
 

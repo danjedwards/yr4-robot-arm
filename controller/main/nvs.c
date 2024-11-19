@@ -5,8 +5,6 @@
 #include <stdio.h>
 
 static const char *NAMESPACE = "robot_data";
-uint8_t current_waypoint = 0;
-waypoint current_program[MAX_WAYPOINTS] = {0};
 
 void init_nvs()
 {
@@ -31,8 +29,6 @@ void init_nvs()
             snprintf(program_name, MAX_NAME_LEN, "Program %d", i);
             set_program_name(i, program_name);
         }
-
-        load_program(i);
     }
 }
 
@@ -167,22 +163,22 @@ waypoint load_waypoint(uint8_t program_index, uint8_t waypoint_index)
     return wp;
 }
 
-void load_program(uint8_t program_index)
+void load_program(uint8_t program_index, waypoint *program)
 {
     char *name = get_program_name(program_index);
     printf("Loading %s\n", name);
     for (int i = 0; i < MAX_WAYPOINTS; i++)
     {
-        current_program[i] = load_waypoint(program_index, i);
+        program[i] = load_waypoint(program_index, i);
     }
 }
 
-void save_program(uint8_t program_index)
+void save_program(uint8_t program_index, waypoint *program)
 {
     char *name = get_program_name(program_index);
     printf("Saving to %s\n", name);
     for (int i = 0; i < MAX_WAYPOINTS; i++)
     {
-        save_waypoint(program_index, i, current_program[i]);
+        save_waypoint(program_index, i, program[i]);
     }
 }
