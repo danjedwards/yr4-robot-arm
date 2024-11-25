@@ -188,7 +188,7 @@ void idle_init()
 
 void idle_proc()
 {
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     printf("Idle Proc...\n");
 }
 
@@ -216,6 +216,6 @@ void run_init()
 
 void run_proc()
 {
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
     printf("Running...\n");
 }

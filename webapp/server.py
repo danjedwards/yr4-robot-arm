@@ -2,12 +2,25 @@ import asyncio
 import websockets
 import socket
 
+# Global variable to track the connected client
+connected_client = None
+
 def connect_to_robot(ip, port):
     robot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     robot_socket.connect((ip, port))
     return robot_socket
 
 async def handle_websocket(websocket, path):
+    global connected_client
+
+    # Reject new connections if there's already a connected client
+    if connected_client is not None:
+        await websocket.close(reason="Only one client is allowed at a time.")
+        print("Rejected a connection: Only one client allowed.")
+        return
+
+    # Assign the connected client
+    connected_client = websocket
     print("WebSocket client connected")
 
     robot_socket = connect_to_robot("192.168.4.1", 8080)
@@ -22,7 +35,7 @@ async def handle_websocket(websocket, path):
             robot_socket.sendall(message)
             
             # Receive the robot's response
-            response = robot_socket.recv(1024) # .decode('utf-8')
+            response = robot_socket.recv(1024)
             print(f"Received from robot: {response}")
 
             # Forward the robot's response back to the WebSocket client
@@ -30,7 +43,8 @@ async def handle_websocket(websocket, path):
     except websockets.ConnectionClosed:
         print("WebSocket client disconnected")
     finally:
-        robot_socket.close()
+        # robot_socket.close()
+        connected_client = None 
 
 # Start the WebSocket server
 async def main(ws_ip, ws_port):

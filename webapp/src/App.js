@@ -1,25 +1,73 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Tabs, Tab, Box } from '@mui/material';
 import ProgrammingView from './components/ProgrammingView';
 import RunMode from './components/RunMode';
+
+const MSG_ERROR = 0
+const MSG_OKAY = 1
+const MSG_READ = 0
+const MSG_WRITE = 1
+
+const STATE_IDLE = 0
+const STATE_PROGRAM = 1
+const STATE_RUNNING = 2
+
+const CMD_WAYPOINT_COUNT = 0
+const CMD_WAYPOINT_IDX = 1
+const CMD_WAYPOINT_CUR = 2
+const CMD_PROGRAM_COUNT = 3
+const CMD_PROGRAM_NAME = 4
+const CMD_PROGRAM_RW = 5
+const CMD_RUN = 6
+
+const SERVER_IP = "127.0.0.1"
+const SERVER_PORT = 8000
+
+const robotSendCommand = (websocket, rw, mode, cmd, bytes) => {
+  if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+    console.log(`Web Socket not connected!`);
+    return;
+  }
+
+  let length = 1
+
+  if (bytes !== null)
+  {
+    length += bytes.length;
+  }
+  
+  let byteArray = new Uint8Array(length);
+  byteArray[0] = ((rw & 1) << 6) | ((mode & 0b111) << 3) | (cmd & 0b111);
+  
+  if (bytes != null)
+  {
+    byteArray.set(bytes, 1);
+  }
+  
+  websocket.send(byteArray);
+  console.log("ws message:", byteArray);
+};
 
 const App = () => {
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Vars
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  const [ws, setWs] = useState(null);
+  const [websocket, setWebsocket] = useState(null);
   const [currentTab, setCurrentTab] = useState(0);
-  const [motorPositions, setMotorPositions] = useState([1225, 1225, 1225, 1225, 1225, 1225]);
-  const [availablePrograms] = useState(["Program 1", "Program 2", "Program 3", "Program 4", "Program 5"])
+  const [waypointIndex, setWaypointIndex] = useState(0);
+  const [waypointCount, setWaypointCount] = useState(100);
+  const [waypoint, setWaypoint] = useState([1225, 1225, 1225, 1225, 1225, 1225]);
+  const [programCount, setProgramCount] = useState(0);
+  const [programNames, setProgramNames] = useState(["Program"]);
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // UI Related Functions
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   const handleSliderChange = (index, newValue) => {
-    const newPositions = [...motorPositions];
+    const newPositions = [...waypoint];
     newPositions[index] = newValue;
-    setMotorPositions(newPositions);
+    setWaypoint(newPositions);
   };
 
   const handleTabChange = (event, newValue) => {
@@ -30,41 +78,38 @@ const App = () => {
   // Robot Comms
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  useEffect(() => {
-    const websocket = new WebSocket('ws://127.0.0.1:8000');
-    setWs(websocket);
-
-    websocket.onopen = () => {
-      // To Do - Query robot settings.
-      // Update available programs
-      // Update motor positions, waypoints... 
-    };
-
-    websocket.onmessage = (event) => {
-      console.log('Received from robot:', event.data);
-      // To Do - update gui with robot state.
-      // If running state, update gui appropriately.
-    };
-
-    // More callbacks... ? Add when necessary.
-
-    return () => websocket.close();
-  }, []);
-
-  const robotSendCommand = (rw, mode, cmd, bytes) => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.log(`Web Socket not connected!`);
-      return;
+  const robotProcessMessage = (msg) => {
+    let err = !((msg[0] >> 7) & 1);
+    let rw = (msg[0] >> 6) & 1;
+    let state = (msg[0] >> 3) & 0b111;
+    let cmd = msg[0] & 0b111;
+    let data = msg.slice(1);
+    console.log(`err: ${err}, cmd: ${cmd}, data: ${data}`)
+    switch (cmd) {
+      case CMD_WAYPOINT_COUNT:
+        setWaypointCount(data);
+        break;
+      case CMD_WAYPOINT_IDX:
+        setWaypointIndex(data);
+        break;
+      case CMD_WAYPOINT_CUR:
+        // ...
+        break;
+      case CMD_PROGRAM_COUNT:
+        setProgramCount(data);
+        break;
+      case CMD_PROGRAM_NAME:
+        // setProgramNames(data);
+      break;
+      case CMD_PROGRAM_RW:
+        // ...
+        break;
+      case CMD_RUN:
+        // ...
+        break;
+      default:
+        break;
     }
-
-    let byteArray = new Uint8Array(bytes.length+1);
-    
-    byteArray[0] = ((rw & 1) << 6) | ((mode & 0b111) << 3) | (cmd & 0b111);
-
-    byteArray.set(bytes, 1);
-
-    ws.send(byteArray);
-    console.log("ws message:", byteArray);
   };
 
   const robotGetProgramNames = () => {
@@ -80,11 +125,11 @@ const App = () => {
 
     for (let i = 0; i < 6; i++)
     {
-      byteArray[2*i] = motorPositions[i] & 0xff;
-      byteArray[2*i+1] = (motorPositions[i] >> 8) & 0xff;
+      byteArray[2*i] = waypoint[i] & 0xff;
+      byteArray[2*i+1] = (waypoint[i] >> 8) & 0xff;
     }
 
-    robotSendCommand(1, 0, 2, byteArray);
+    robotSendCommand(websocket, 1, 0, 2, byteArray);
   };
 
   const robotSaveProgram = () => {
@@ -94,6 +139,43 @@ const App = () => {
   const robotRunProgram = () => {
     // to do
   }
+
+  useEffect(() => {
+    const websocket = new WebSocket(`ws://${SERVER_IP}:${SERVER_PORT}`);
+    websocket.binaryType = "arraybuffer";
+
+    setWebsocket(websocket);
+
+    websocket.onopen = () => {
+      console.log("WebSocket connected");
+      // Query robot settings.
+      robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_WAYPOINT_COUNT, null);
+      robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_WAYPOINT_IDX, null);
+      robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_WAYPOINT_CUR, null);
+      robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_PROGRAM_COUNT, null);
+      for (let i = 0; i < 6; i++)
+      {
+        robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_PROGRAM_NAME, new Uint8Array([i]));
+      }
+    };
+
+    websocket.onmessage = (event) => {
+      console.log('Received from robot:', event.data);
+      const arrayBuffer = event.data;
+      const byteArray = new Uint8Array(arrayBuffer);
+      robotProcessMessage(byteArray);
+    };
+
+    websocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+  
+    websocket.onclose = () => {
+      console.log("WebSocket closed");
+    };
+
+    return () => websocket.close();
+  }, []);
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Render Section
@@ -114,13 +196,13 @@ const App = () => {
       <Box sx={{ marginTop: 4 }}>
         {currentTab === 0 && 
           <ProgrammingView 
-            motorPositions={motorPositions}
+            motorPositions={waypoint}
             handleSliderChange={handleSliderChange}
-            sendSignal={robotSetWaypoint}
+            sendWaypoint={robotSetWaypoint}
         />}
         {currentTab === 1 && 
         <RunMode 
-        availablePrograms={availablePrograms}
+        availablePrograms={programNames}
         />}
       </Box>
     </Container>
