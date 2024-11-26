@@ -114,11 +114,11 @@ void process_message_callback(const message request, message *response)
     case MSG_PROGRAM_NAME:
         if (request.data_len == 0)
             goto end;
+        if (request.data[0] > MAX_PROGRAMS)
+            goto end;
         if (response->rw == MSG_WRITE)
         {
             if (request.data_len < 2)
-                goto end;
-            if (request.data[0] > MAX_PROGRAMS)
                 goto end;
             char new_name[MAX_NAME_LEN];
             memcpy(new_name, request.data + 1, request.data_len - 1);
@@ -128,8 +128,9 @@ void process_message_callback(const message request, message *response)
         char *name = get_program_name(request.data[0]);
         if (name == NULL)
             goto end;
-        response->data_len = strlen(name);
-        memcpy(response->data, name, response->data_len);
+        response->data_len = strlen(name) + 1;
+        response->data[0] = request.data[0];
+        memcpy(response->data + 1, name, response->data_len);
         break;
     case MSG_PROGRAM_RW:
         if (request.data_len == 0)

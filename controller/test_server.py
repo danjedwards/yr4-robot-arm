@@ -141,7 +141,7 @@ def main():
         assert err == False
         assert rw == MSG_WRITE
         assert command == MSG_PROGRAM_NAME
-        assert data == name
+        assert data[1:] == name
 
     input("Hit enter for next test...")
 
