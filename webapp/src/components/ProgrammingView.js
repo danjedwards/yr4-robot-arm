@@ -4,27 +4,25 @@ import motorNames from '../globals';
 import { Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import SpinBox from './SpinBox';
 
-const ProgrammingView = ({ motorPositions, handleSliderChange, sendWaypoint}) => {
+const ProgrammingView = ({ waypoint, handleSliderChange, sendWaypoint, saveProgram}) => {
   const [waypointStep, setWaypointStep] = useState(1);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [programIndex, setProgramIndex] = useState(0);
   const [programName, setProgramName] = useState('');
 
-  // Function to open the dialog
   const handleSaveWaypoint = () => {
     setDialogOpen(true);
   };
 
-  // Function to handle dialog close
   const handleDialogClose = () => {
     setDialogOpen(false);
   };
 
-  // Function to handle program save
   const handleProgramSave = () => {
     console.log(`Saved Program - Index: ${programIndex}, Name: ${programName}`);
-    // Additional save logic goes here
     setDialogOpen(false);
+    // saveProgram(programIndex, programName);
+    saveProgram(programIndex, programName);
   };
 
   return (
@@ -41,7 +39,7 @@ const ProgrammingView = ({ motorPositions, handleSliderChange, sendWaypoint}) =>
       </Box>
 
       <Box display="flex" flexDirection="column" alignItems="center" gap={3} marginBottom={4} sx={{ width: '100%' }}>
-        {motorPositions.map((position, index) => (
+        {waypoint.map((position, index) => (
           <MotorSlider
             key={index}
             value={position}

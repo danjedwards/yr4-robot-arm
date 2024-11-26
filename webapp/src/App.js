@@ -57,8 +57,11 @@ const App = () => {
   const [waypointIndex, setWaypointIndex] = useState(0);
   const [waypointCount, setWaypointCount] = useState(100);
   const [waypoint, setWaypoint] = useState([1225, 1225, 1225, 1225, 1225, 1225]);
+  const [waypointTarget, setWaypointTarget] = useState([1225, 1225, 1225, 1225, 1225, 1225]);
+  const [motorPositions, setMotorPositions] = useState([1225, 1225, 1225, 1225, 1225, 1225]);
   const [programCount, setProgramCount] = useState(0);
   const [programNames, setProgramNames] = useState(["Program"]);
+
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // UI Related Functions
@@ -87,19 +90,24 @@ const App = () => {
     console.log(`err: ${err}, cmd: ${cmd}, data: ${data}`)
     switch (cmd) {
       case CMD_WAYPOINT_COUNT:
-        setWaypointCount(data);
+        setWaypointCount(data[0]);
+        console.log(`waypoint count: ${waypointCount}`);
         break;
       case CMD_WAYPOINT_IDX:
-        setWaypointIndex(data);
+        setWaypointIndex(data[0]);
+        console.log(`waypoint index: ${waypointIndex}`);
         break;
       case CMD_WAYPOINT_CUR:
         // ...
         break;
       case CMD_PROGRAM_COUNT:
-        setProgramCount(data);
+        setProgramCount(data[0]);
+        console.log(`program count: ${programCount}`);
         break;
       case CMD_PROGRAM_NAME:
-        // setProgramNames(data);
+        const updatedNames = [...programNames];
+        updatedNames[data[0]] = String.fromCharCode(...data.slice(1));
+        setProgramNames(updatedNames);
       break;
       case CMD_PROGRAM_RW:
         // ...
@@ -113,7 +121,10 @@ const App = () => {
   };
 
   const robotGetProgramNames = () => {
-    // to do
+    for (let i = 0; i < 5; i++)
+    {
+      robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_PROGRAM_NAME, new Uint8Array([i]));
+    }
   }
 
   const robotSetWaypointIndex = () => {
@@ -132,12 +143,26 @@ const App = () => {
     robotSendCommand(websocket, 1, 0, 2, byteArray);
   };
 
-  const robotSaveProgram = () => {
-    // to do
+  const robotSaveProgram = (programIndex, programName) => {
+    const encoder = new TextEncoder();
+    const stringBytes = encoder.encode(programName);
+    const byteArray = new Uint8Array(1 + stringBytes.length);
+    const progIdx = new  Uint8Array([programIndex]);
+
+    byteArray.set(progIdx, 0);
+    byteArray.set(stringBytes, 1);
+
+    robotSendCommand(websocket, MSG_WRITE, 0, CMD_PROGRAM_NAME, byteArray);
+    robotSendCommand(websocket, MSG_WRITE, 0, CMD_PROGRAM_RW, progIdx);
   }
 
-  const robotRunProgram = () => {
-    // to do
+  const robotRunProgram = (programIndex) => {
+    robotSendCommand(websocket, MSG_READ, 0, CMD_PROGRAM_RW, new Uint8Array([programIndex]));
+    robotSendCommand(websocket, MSG_WRITE, 0, CMD_RUN, new Uint8Array([1]));
+  }
+
+  const robotStopProgram = () => {
+    robotSendCommand(websocket, MSG_WRITE, 0, CMD_RUN, new Uint8Array([0]));
   }
 
   useEffect(() => {
@@ -148,12 +173,11 @@ const App = () => {
 
     websocket.onopen = () => {
       console.log("WebSocket connected");
-      // Query robot settings.
       robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_WAYPOINT_COUNT, null);
       robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_WAYPOINT_IDX, null);
       robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_WAYPOINT_CUR, null);
       robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_PROGRAM_COUNT, null);
-      for (let i = 0; i < 6; i++)
+      for (let i = 0; i < 5; i++)
       {
         robotSendCommand(websocket, MSG_READ, STATE_IDLE, CMD_PROGRAM_NAME, new Uint8Array([i]));
       }
@@ -196,13 +220,18 @@ const App = () => {
       <Box sx={{ marginTop: 4 }}>
         {currentTab === 0 && 
           <ProgrammingView 
-            motorPositions={waypoint}
+            waypoint={waypoint}
             handleSliderChange={handleSliderChange}
             sendWaypoint={robotSetWaypoint}
+            saveProgram={robotSaveProgram}
         />}
         {currentTab === 1 && 
         <RunMode 
-        availablePrograms={programNames}
+          availablePrograms={programNames}
+          motorPositions={motorPositions}
+          targetWaypoint={waypointTarget}
+          startProgram={robotRunProgram}
+          stopProgram={robotStopProgram}
         />}
       </Box>
     </Container>

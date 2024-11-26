@@ -10,12 +10,10 @@ const RunMode = ({ availablePrograms }) => {
     Object.values(motorNames).map(() => ({ current: 1200, target: 1200 }))
   );
 
-  // Handle program selection
   const handleProgramChange = (event) => {
     setSelectedProgram(event.target.value);
   };
 
-  // Toggle Start/Stop button
   const handleToggleRun = () => {
     setIsRunning((prev) => !prev);
     if (!isRunning) {
@@ -25,18 +23,14 @@ const RunMode = ({ availablePrograms }) => {
     }
   };
 
-  // Dummy functions for starting/stopping program and updating positions
   const startProgram = () => {
     console.log(`Starting program: ${selectedProgram}`);
-    // Logic to start the program and update motor positions goes here
   };
 
   const stopProgram = () => {
     console.log('Stopping program');
-    // Logic to stop the program goes here
   };
 
-  // Example function to update motor positions (can be used with setInterval or WebSocket data)
   const updateMotorPositions = () => {
     setMotorPositions((prevPositions) =>
       prevPositions.map((motor, index) => ({
@@ -65,7 +59,6 @@ const RunMode = ({ availablePrograms }) => {
         </Select>
       </FormControl>
 
-      {/* Start/Stop Button */}
       <Button
         variant="contained"
         color={isRunning ? 'secondary' : 'primary'}
@@ -75,12 +68,10 @@ const RunMode = ({ availablePrograms }) => {
         {isRunning ? 'Stop' : 'Start'}
       </Button>
 
-      {/* Current Waypoint Display */}
       <Typography variant="h6" gutterBottom>
         Current Waypoint: {currentWaypoint}
       </Typography>
 
-      {/* Motor Positions Table */}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
