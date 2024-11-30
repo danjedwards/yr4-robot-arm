@@ -44,6 +44,7 @@ class MainWindow(QMainWindow):
         self.run_view = PositionView(N_MOTORS)
 
         # Signals and Slots
+        
 
         # Layout
         layout = QHBoxLayout()
