@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
         # Widgets
         self.control_view = ControlView(MAX_PROGRAMS)
         self.prog_view = ProgramView(N_MOTORS, MIN_PWM, MAX_PWM, WAYPOINT_MIN_IDX, WAYPOINT_MAX_IDX)
-        self.run_view = PositionView(N_MOTORS)
+        self.run_view = PositionView(N_MOTORS, MOTOR_LABELS)
 
         # Signals and Slots
         
