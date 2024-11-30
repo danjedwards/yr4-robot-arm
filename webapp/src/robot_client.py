@@ -2,6 +2,7 @@ import socket
 import logging
 import struct
 # import select
+from typing import Tuple
 from dataclasses import dataclass, fields, astuple
 from enum import IntEnum
 
@@ -107,14 +108,20 @@ class RobotClient:
     def get_program_count(self) -> int | None:
         return self.__get(RobotCommand.PROGRAM_COUNT)      
 
-    def get_waypoint_current(self) -> RobotWaypoint:
+    def get_waypoint_current(self) -> Tuple[RobotState, RobotWaypoint]:
         self.__write(RobotMessage(None, RobotReadWrite.READ, RobotState.IDLE, RobotCommand.WAYPOINT_CURRENT, None))
         msg = self.__read()
         
         if msg.err:
             return None
         
-        return RobotWaypoint(*list(struct.unpack("<" + "H" * (len(msg.data) // 2), msg.data)))
+        return msg.state, RobotWaypoint(*list(struct.unpack("<" + "H" * (len(msg.data) // 2), msg.data)))
+
+    def get_program_name(self, idx) -> str:
+        self.__write(RobotMessage(None, RobotReadWrite.READ, RobotState.IDLE, RobotCommand.PROGRAM_NAME, bytearray([idx])))
+        msg = self.__read()
+        assert msg.err == False
+        return msg.data[1:].decode("utf-8")
 
     def get_program_names(self) -> list[str] | list[None]:
         program_names = {}
@@ -124,10 +131,7 @@ class RobotClient:
             return program_names
 
         for i in range(prog_count):
-            self.__write(RobotMessage(None, RobotReadWrite.READ, RobotState.IDLE, RobotCommand.PROGRAM_NAME, bytearray([i])))
-            msg = self.__read()
-            assert msg.err == False
-            program_names[msg.data[0]] = msg.data[1:].decode("utf-8")
+            program_names[i] = self.get_program_name(i)
         
         return program_names
 
@@ -165,12 +169,12 @@ class RobotClient:
         assert msg.err == False
 
     def run(self) -> None:
-        self.__write(RobotMessage(None, RobotReadWrite.WRITE, RobotState.IDLE, RobotCommand.RUN, b"1"))
+        self.__write(RobotMessage(None, RobotReadWrite.WRITE, RobotState.IDLE, RobotCommand.RUN, bytearray([0x01])))
         msg = self.__read()
         assert msg.err == False
 
     def stop(self) -> None:
-        self.__write(RobotMessage(None, RobotReadWrite.WRITE, RobotState.IDLE, RobotCommand.RUN, b"0"))
+        self.__write(RobotMessage(None, RobotReadWrite.WRITE, RobotState.IDLE, RobotCommand.RUN, bytearray([0x00])))
         msg = self.__read()
         assert msg.err == False
 
@@ -181,7 +185,7 @@ if __name__ == "__main__":
     w_count = robot.get_waypoint_count()
     w_idx = robot.get_waypoint_index()
     p_count = robot.get_program_count()
-    w_cur = robot.get_waypoint_current()
+    state, w_cur = robot.get_waypoint_current()
     p_names = robot.get_program_names()
     
     # robot.save_program()
