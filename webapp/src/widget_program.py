@@ -1,3 +1,4 @@
+from robot_client import RobotWaypoint
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication, 
@@ -12,12 +13,11 @@ from PyQt5.QtWidgets import (
 
 class ProgramView(QWidget):
     waypoint_index_changed = pyqtSignal(int)
+    set_waypoint_clicked = pyqtSignal(int, RobotWaypoint)
 
     def __init__(self, n_motos, slider_min, slider_max, waypoint_min, waypoint_max):
         # Cfg
         super().__init__()
-
-        # Vars
 
         # Widgets
         self.sliders = []
@@ -25,6 +25,7 @@ class ProgramView(QWidget):
             slider = QSlider()
             slider.setMinimum(slider_min)
             slider.setMaximum(slider_max)
+            slider.setValue(slider_min)
             slider.setSingleStep(1)
             self.sliders.append(slider)
 
@@ -36,6 +37,12 @@ class ProgramView(QWidget):
 
         # Signals and Slots
         self.waypoint_index.valueChanged.connect(self.waypoint_index_changed.emit)
+        self.set_waypoint.clicked.connect(
+            lambda: self.set_waypoint_clicked.emit(
+                self.waypoint_index.value(),
+                RobotWaypoint(*[s.value() for s in self.sliders])
+            )
+        )
 
         # Layout
         layout = QHBoxLayout()
@@ -64,12 +71,16 @@ if __name__ == "__main__":
             self.widget = widget
 
             self.widget.waypoint_index_changed.connect(self.test_waypoint_index_changed)
+            self.widget.set_waypoint_clicked.connect(self.test_set_waypoint_clicked)
 
         def test_waypoint_index_changed(self, idx:int):
             print(f"* Received index signal change to {idx}")
 
+        def test_set_waypoint_clicked(self, idx:int, waypoint:RobotWaypoint):
+            print(f"* Received set waypoint signal for index {idx} and waypoint: {waypoint}")
+
     app = QApplication(sys.argv)
-    test_widget = ProgramView(5, 100, 2000, 0, 99)
+    test_widget = ProgramView(6, 100, 2000, 0, 99)
 
     tester = SignalTester(test_widget)
 
