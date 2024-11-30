@@ -1,6 +1,7 @@
 import socket
 import logging
 import struct
+# import select
 from dataclasses import dataclass, fields, astuple
 from enum import IntEnum
 
@@ -67,7 +68,7 @@ class RobotMessage:
     data: bytearray
 
 class RobotClient:
-    def __init__(self, ip, port):
+    def __init__(self, ip:str, port:int):
         self.ip = ip
         self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -75,6 +76,7 @@ class RobotClient:
         logging.info(f"Connected to the robot on {self.ip}:{self.port}")
 
     def __read(self) -> RobotMessage:
+        # readable, writable, exceptional = select.select([self.socket], [self.socket], [self.socket], 5)
         buf = self.socket.recv(1024)
         return RobotMessage(
             err=not ((buf[0] >> 7) & 1),
@@ -87,6 +89,8 @@ class RobotClient:
     def __write(self, message: RobotMessage) -> None:
         cfg_byte = (((message.rw & 1) << 6) | ((message.state & 0b111) << 3) | (message.command & 0b111)).to_bytes(1, 'big')
         buf = cfg_byte + message.data if message.data != None else cfg_byte
+        
+        # ... make neat with select.
         self.socket.sendall(buf)
 
     def __get(self, command: RobotCommand) -> int | None:
