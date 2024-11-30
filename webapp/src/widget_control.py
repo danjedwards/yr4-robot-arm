@@ -23,6 +23,7 @@ class ControlView(QWidget):
         self.program_index = QComboBox()
         self.program_index.addItems([f"{i}" for i in range(max_programs)])
         self.program_name = QLineEdit("Program")
+        self.program_name.setMaxLength(19)
         self.save_program = QPushButton("Save Program")
         self.load_program = QPushButton("Load Program")
         self.start_stop_button = QPushButton("Start") 
@@ -60,13 +61,13 @@ class ControlView(QWidget):
         self.setLayout(layout)
 
     def setRunning(self, running:bool):
-        self.program_index.setDisabled(running)
-        self.program_index.setDisabled(running)
-        self.program_name.setDisabled(running)
-        self.save_program.setDisabled(running)
-        self.load_program.setDisabled(running)
+        self.program_index.setDisabled(not running)
+        self.program_index.setDisabled(not running)
+        self.program_name.setDisabled(not running)
+        self.save_program.setDisabled(not running)
+        self.load_program.setDisabled(not running)
 
-        self.start_stop_button.setText("Stop" if running else "Start")
+        self.start_stop_button.setText("Stop" if not running else "Start")
 
 if __name__ == "__main__":
     import sys

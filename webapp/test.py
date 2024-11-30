@@ -17,6 +17,7 @@ try:
 
         while True:
             data = client_socket.recv(1024)
+            
             if not data:  # client has disconnected
                 print(f"Client {client_address} disconnected.")
                 break

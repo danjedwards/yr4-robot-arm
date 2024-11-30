@@ -1,7 +1,7 @@
 import socket
 import logging
 import struct
-# import select
+import select
 from typing import Tuple
 from dataclasses import dataclass, fields, astuple
 from enum import IntEnum
@@ -69,15 +69,30 @@ class RobotMessage:
     data: bytearray
 
 class RobotClient:
-    def __init__(self, ip:str, port:int):
+    def __init__(self, ip:str, port:int, timeout_s:float=5.0) -> None:
         self.ip = ip
         self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.set_timeout(timeout_s)
         self.socket.connect((self.ip, self.port))
         logging.info(f"Connected to the robot on {self.ip}:{self.port}")
 
+    def flush(self) -> None:
+        
+        self.socket.setblocking(False)
+        
+        try:
+            while True:
+                msg = self.__read()
+                logging.warning(f"Unread {str(msg.command)} message!")
+        except BlockingIOError:
+            logging.info("Data flushed")
+        except socket.error as e:
+            logging.critical(f"Socket error: {e}")
+
+        self.socket.setblocking(True)
+
     def __read(self) -> RobotMessage:
-        # readable, writable, exceptional = select.select([self.socket], [self.socket], [self.socket], 5)
         buf = self.socket.recv(1024)
         return RobotMessage(
             err=not ((buf[0] >> 7) & 1),
@@ -90,14 +105,29 @@ class RobotClient:
     def __write(self, message: RobotMessage) -> None:
         cfg_byte = (((message.rw & 1) << 6) | ((message.state & 0b111) << 3) | (message.command & 0b111)).to_bytes(1, 'big')
         buf = cfg_byte + message.data if message.data != None else cfg_byte
-        
-        # ... make neat with select.
+        readable, writable, exceptional = select.select([self.socket], [self.socket], [self.socket])
+
+        if exceptional:
+            logging.critical("Exceptional socket!!")
+            return
+
+        if readable:
+            self.flush()
+            readable, writable, exceptional = select.select([self.socket], [self.socket], [self.socket])
+
+        if not writable:
+            logging.critical("Cannot write to the socket!!")
+            return
+
         self.socket.sendall(buf)
 
     def __get(self, command: RobotCommand) -> int | None:
         self.__write(RobotMessage(None, RobotReadWrite.READ, RobotState.IDLE, command, None))
         msg = self.__read()
         return int.from_bytes(msg.data, "little") if not msg.err else None
+
+    def set_timeout(self, timeout_s:float=None) -> None:
+        self.socket.settimeout(timeout_s)
 
     def get_waypoint_count(self) -> int | None:
         return self.__get(RobotCommand.WAYPOINT_COUNT)
@@ -108,12 +138,18 @@ class RobotClient:
     def get_program_count(self) -> int | None:
         return self.__get(RobotCommand.PROGRAM_COUNT)      
 
-    def get_waypoint_current(self) -> Tuple[RobotState, RobotWaypoint]:
+    def get_waypoint_current(self) -> Tuple[RobotState, RobotWaypoint|None]:
         self.__write(RobotMessage(None, RobotReadWrite.READ, RobotState.IDLE, RobotCommand.WAYPOINT_CURRENT, None))
         msg = self.__read()
         
         if msg.err:
-            return None
+            logging.critical("Message error")
+            return
+        
+        if len(msg.data) != len(fields(RobotWaypoint))*2:
+            logging.critical("Incorrect buffer size!!")
+            logging.critical(f"Received data buffer: {msg.data}")
+            return msg.state, None
         
         return msg.state, RobotWaypoint(*list(struct.unpack("<" + "H" * (len(msg.data) // 2), msg.data)))
 
