@@ -78,13 +78,12 @@ class RobotClient:
         logging.info(f"Connected to the robot on {self.ip}:{self.port}")
 
     def flush(self) -> None:
-        
         self.socket.setblocking(False)
-        
         try:
             while True:
                 msg = self.__read()
                 logging.warning(f"Unread {str(msg.command)} message!")
+                logging.warning(msg)
         except BlockingIOError:
             logging.info("Data flushed")
         except socket.error as e:
@@ -105,6 +104,7 @@ class RobotClient:
     def __write(self, message: RobotMessage) -> None:
         cfg_byte = (((message.rw & 1) << 6) | ((message.state & 0b111) << 3) | (message.command & 0b111)).to_bytes(1, 'big')
         buf = cfg_byte + message.data if message.data != None else cfg_byte
+
         readable, writable, exceptional = select.select([self.socket], [self.socket], [self.socket])
 
         if exceptional:
@@ -223,14 +223,6 @@ if __name__ == "__main__":
     p_count = robot.get_program_count()
     state, w_cur = robot.get_waypoint_current()
     p_names = robot.get_program_names()
-    
-    # robot.save_program()
-    # robot.set_waypoint_index()
-    # robot.set_waypoint()
-    # robot.set_program_name()
-    # robot.load_program()
-    # robot.run()
-    # robot.stop()
 
     print(f"Waypoint count: {w_count}")
     print(f"Waypoint Index: {w_idx}")

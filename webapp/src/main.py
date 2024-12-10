@@ -118,7 +118,7 @@ class MainWindow(QMainWindow):
         self.run_view = PositionView(N_MOTORS, MOTOR_LABELS)
 
         # Signals and Slots
-        self.listen_thread_wrapper.new_data.connect(print)
+        self.listen_thread_wrapper.new_data.connect(lambda x: self.run_view.update_current_position(x[1]))
         self.listen_thread_wrapper.finished.connect(lambda: self.enable_controls(True))
 
         self.control_view.toggle_start_stop.connect(self.toggle_start_stop)

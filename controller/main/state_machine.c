@@ -14,13 +14,10 @@
 
 void idle_init();
 void idle_proc();
-void prog_init();
-void prog_proc();
 void run_init();
 void run_proc();
 
-state idle = {MSG_IDLE, "idle", idle_init, idle_proc};
-state program = {MSG_PROGRAM, "program", prog_init, prog_proc};
+state program = {MSG_IDLE, "program", idle_init, idle_proc};
 state run = {MSG_RUNNING, "run", run_init, run_proc};
 
 state_machine sm = {0};
@@ -40,11 +37,22 @@ void state_machine_init()
         return;
     }
 
-    sm.current_state = &idle;
+    sm.current_state = &program;
     sm.next_state = NULL;
     sm.current_waypoint_index = 0;
-    memset(sm.current_program, 0, sizeof(sm.current_program));
 
+    for (int i = 0; i < MAX_WAYPOINTS; i++)
+    {
+        sm.current_program[i].base_pos = MOTOR_DEFAULT_DUTY;
+        sm.current_program[i].shoulder_pos = MOTOR_DEFAULT_DUTY;
+        sm.current_program[i].elbow_pos = MOTOR_DEFAULT_DUTY;
+        sm.current_program[i].wrist1_pos = MOTOR_DEFAULT_DUTY;
+        sm.current_program[i].wrist1_pos = MOTOR_DEFAULT_DUTY;
+        sm.current_program[i].gripper_pos = MOTOR_DEFAULT_DUTY;
+    }
+
+    // memset(sm.current_program, 410, sizeof(sm.current_program));
+    
     init_nvs();
     server_init();
 
@@ -64,6 +72,8 @@ void process_message_callback(const message request, message *response)
         return;
     }
 
+
+    // If state == running then dont allow modification of position!
     switch (response->command)
     {
     case MSG_WAYPOINT_COUNT:
@@ -155,7 +165,7 @@ void process_message_callback(const message request, message *response)
         {
             if (request.data_len == 0)
                 goto end;
-            sm.next_state = request.data[0] ? &run : &idle;
+            sm.next_state = request.data[0] ? &run : &program;
         }
         break;
     default:
@@ -184,39 +194,80 @@ end:
 
 void idle_init()
 {
+    printf("Idle State...\n");
     register_message_callback(process_message_callback);
+
+    motor_init(BASE_PWM_CHANNEL, BASE_GPIO);
+    motor_init(SHOULDER_PWM_CHANNEL, SHOULDER_GPIO);
+    motor_init(ELBOW_PWM_CHANNEL, ELBOW_GPIO);
+    motor_init(WRIST_1_PWM_CHANNEL, WRIST_1_GPIO);
+    motor_init(WRIST_2_PWM_CHANNEL, WRIST_2_GPIO);
+    motor_init(GRIPPER_PWM_CHANNEL, GRIPPER_GPIO);
 }
 
 void idle_proc()
 {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    printf("Idle Proc...\n");
-}
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 
-///////////////////////////////////////////////////////////////////////
-// Program
-///////////////////////////////////////////////////////////////////////
+    waypoint wp = sm.current_program[sm.current_waypoint_index];
 
-void prog_init()
-{
-    register_message_callback(process_message_callback);
-}
+    motor_to_pos(BASE_PWM_CHANNEL, wp.base_pos);
+    motor_to_pos(SHOULDER_PWM_CHANNEL, wp.shoulder_pos);
+    motor_to_pos(ELBOW_PWM_CHANNEL, wp.elbow_pos);
+    motor_to_pos(WRIST_1_PWM_CHANNEL, wp.wrist1_pos);
+    motor_to_pos(WRIST_2_PWM_CHANNEL, wp.wrist2_pos);
+    motor_to_pos(GRIPPER_PWM_CHANNEL, wp.gripper_pos);
 
-void prog_proc()
-{
+    printf("gripper pos %d\n", sm.current_program[sm.current_waypoint_index].gripper_pos);
+
 }
 
 ///////////////////////////////////////////////////////////////////////
 // Run
 ///////////////////////////////////////////////////////////////////////
 
+static int memvcmp(void *memory, unsigned char val, unsigned int size)
+{
+    unsigned char *mm = (unsigned char*)memory;
+    return (*mm == val) && memcmp(mm, mm + 1, size - 1) == 0;
+}
+
 void run_init()
 {
+    printf("Running...\n");
     register_message_callback(process_message_callback);
 }
 
 void run_proc()
 {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    printf("Running...\n");
+    // Program finished
+    if (sm.current_waypoint_index > MAX_WAYPOINTS)
+    {
+        printf("Program Finished!\n");
+        sm.current_waypoint_index = 0;
+        sm.next_state = &program;
+        return;
+    }
+
+    // Voided waypoint
+    if (memvcmp(&sm.current_program[sm.current_waypoint_index], 0, sizeof(waypoint)))
+    {
+        printf("Waypoint index %d is a voided waypoint! Skipping...\n", sm.current_waypoint_index);
+        goto end;
+    }
+
+    // Move closer to the target position
+    waypoint wp = sm.current_program[sm.current_waypoint_index];
+    
+    motor_to_pos(BASE_PWM_CHANNEL, wp.base_pos);
+    motor_to_pos(SHOULDER_PWM_CHANNEL, wp.shoulder_pos);
+    motor_to_pos(ELBOW_PWM_CHANNEL, wp.elbow_pos);
+    motor_to_pos(WRIST_1_PWM_CHANNEL, wp.wrist1_pos);
+    motor_to_pos(WRIST_2_PWM_CHANNEL, wp.wrist2_pos);
+    motor_to_pos(GRIPPER_PWM_CHANNEL, wp.gripper_pos);
+
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+
+end:
+    sm.current_waypoint_index++;
 }

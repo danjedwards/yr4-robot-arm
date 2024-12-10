@@ -4,12 +4,12 @@
 #include "driver/ledc.h"
 
 // Motors / PWM
-#define BASE_GPIO 5
-#define SHOULDER_GPIO 7
-#define ELBOW_GPIO 0
-#define WRIST_1_GPIO 0
-#define WRIST_2_GPIO 0
-#define GRIPPER_GPIO 0
+#define BASE_GPIO 16
+#define SHOULDER_GPIO 15
+#define ELBOW_GPIO 7
+#define WRIST_1_GPIO 6
+#define WRIST_2_GPIO 5
+#define GRIPPER_GPIO 4
 
 #define BASE_PWM_CHANNEL LEDC_CHANNEL_0
 #define SHOULDER_PWM_CHANNEL LEDC_CHANNEL_1

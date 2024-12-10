@@ -10,6 +10,7 @@
 typedef struct
 {
     // uint8_t speed; // ? think about this later.
+    // delay time
     uint16_t base_pos, shoulder_pos, elbow_pos, wrist1_pos, wrist2_pos, gripper_pos;
 } waypoint;
 

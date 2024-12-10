@@ -16,7 +16,7 @@ class PositionView(QWidget):
         super().__init__()
 
         # Vars
-        table_headers = ["Motor", "Current Position", "Target Position"]
+        table_headers = ["Motor", "Current Position"]
 
         # Widgets
         self.table = QTableWidget()
@@ -39,10 +39,6 @@ class PositionView(QWidget):
         for i, f in enumerate(fields(RobotWaypoint)):
             self.table.setItem(i, 1, QTableWidgetItem(f"{getattr(position, f.name)}"))
 
-    def update_target_waypoint(self, target:RobotWaypoint):
-        for i, f in enumerate(fields(RobotWaypoint)):
-            self.table.setItem(i, 2, QTableWidgetItem(f"{getattr(target, f.name)}"))
-
 if __name__ == "__main__":
     import sys
     from PyQt5.QtCore import QTimer
@@ -57,15 +53,12 @@ if __name__ == "__main__":
     test_widget = PositionView(6, labels)
 
     current_position = RobotWaypoint(*[1000]*6)
-    target_waypoint = RobotWaypoint(*[1000]*6)
 
     def update_fields():
         for field in fields(RobotWaypoint):
             setattr(current_position, field.name, random.randint(500, 2100))
-            setattr(target_waypoint, field.name, random.randint(500, 2100))
 
         test_widget.update_current_position(current_position)
-        test_widget.update_target_waypoint(target_waypoint)
 
     timer = QTimer()
     timer.timeout.connect(update_fields)

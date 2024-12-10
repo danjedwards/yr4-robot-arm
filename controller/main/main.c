@@ -23,7 +23,9 @@ void app_main(void)
         }
 
         sm.current_state->process();
+        
         xSemaphoreGive(sm_mutex);
+        
         vTaskDelay(5 / portTICK_PERIOD_MS);
     }
 }
